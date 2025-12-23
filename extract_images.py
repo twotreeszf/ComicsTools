@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extract images from PDF, EPUB, or MOBI files and save them to a folder with the same name.
+Extract images from PDF, EPUB, MOBI, or ZIP files and save them to a folder with the same name.
 Images are saved with sequential names like 0001.jpg, 0002.jpg, etc.
 """
 
@@ -99,6 +99,39 @@ def extract_images_from_epub(file_path: Path, output_folder: Path) -> int:
     return image_count
 
 
+def extract_images_from_zip(file_path: Path, output_folder: Path) -> int:
+    """Extract images from a ZIP file. Returns the number of images extracted."""
+    image_count = 0
+    
+    with zipfile.ZipFile(file_path, "r") as zf:
+        # Get all image files from the ZIP
+        image_files = [
+            name for name in zf.namelist()
+            if Path(name).suffix.lower() in IMAGE_EXTENSIONS
+        ]
+        
+        # Sort to ensure consistent ordering
+        image_files.sort()
+        
+        print(f"Found {len(image_files)} images in ZIP...")
+        
+        for image_name in image_files:
+            try:
+                image_bytes = zf.read(image_name)
+                
+                image_count += 1
+                image_filename = f"{image_count:04d}.jpg"
+                image_path = output_folder / image_filename
+                
+                save_image_as_jpg(image_bytes, image_path)
+                print(f"  Extracted: {image_filename} ({image_name})")
+                
+            except Exception as e:
+                print(f"  Warning: Failed to extract {image_name}: {e}")
+    
+    return image_count
+
+
 def extract_images_from_mobi(file_path: Path, output_folder: Path) -> int:
     """Extract images from a MOBI file. Returns the number of images extracted."""
     image_count = 0
@@ -156,7 +189,7 @@ def extract_images_from_mobi(file_path: Path, output_folder: Path) -> int:
 
 
 def extract_images(input_path: str) -> None:
-    """Main function to extract images from PDF, EPUB, or MOBI files."""
+    """Main function to extract images from PDF, EPUB, MOBI, or ZIP files."""
     input_file = Path(input_path)
     
     if not input_file.exists():
@@ -164,9 +197,9 @@ def extract_images(input_path: str) -> None:
         sys.exit(1)
     
     suffix = input_file.suffix.lower()
-    if suffix not in (".pdf", ".epub", ".mobi"):
+    if suffix not in (".pdf", ".epub", ".mobi", ".zip"):
         print(f"Error: Unsupported file format: {suffix}")
-        print("Supported formats: .pdf, .epub, .mobi")
+        print("Supported formats: .pdf, .epub, .mobi, .zip")
         sys.exit(1)
     
     # Create output folder with the same name as the input file (without extension)
@@ -178,6 +211,8 @@ def extract_images(input_path: str) -> None:
         image_count = extract_images_from_pdf(input_file, output_folder)
     elif suffix == ".epub":
         image_count = extract_images_from_epub(input_file, output_folder)
+    elif suffix == ".zip":
+        image_count = extract_images_from_zip(input_file, output_folder)
     else:  # .mobi
         image_count = extract_images_from_mobi(input_file, output_folder)
     
@@ -189,11 +224,11 @@ def extract_images(input_path: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Extract images from PDF, EPUB, or MOBI files."
+        description="Extract images from PDF, EPUB, MOBI, or ZIP files."
     )
     parser.add_argument(
         "input_file",
-        help="Path to the PDF, EPUB, or MOBI file"
+        help="Path to the PDF, EPUB, MOBI, or ZIP file"
     )
     
     args = parser.parse_args()

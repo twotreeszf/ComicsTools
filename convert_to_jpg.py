@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert all images in a given directory to JPG format.
+Convert all images in a given directory (including subfolders) to JPG format.
 The original files are replaced with JPG versions, keeping the same base filename.
 """
 
@@ -13,13 +13,14 @@ from PIL import Image
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff"}
 
 
-def convert_image_to_jpg(image_path: Path) -> bool:
+def convert_image_to_jpg(image_path: Path, base_folder: Path) -> bool:
     """
     Convert an image to JPG format. 
     Returns True if conversion was performed, False if skipped.
     """
     suffix = image_path.suffix.lower()
     output_path = image_path.with_suffix(".jpg")
+    relative_path = image_path.relative_to(base_folder)
     
     # If already .jpg, check if mode conversion is needed
     if suffix == ".jpg" or suffix == ".jpeg":
@@ -40,11 +41,11 @@ def convert_image_to_jpg(image_path: Path) -> bool:
         
         # Remove original file
         image_path.unlink()
-        print(f"  Converted: {image_path.name} -> {output_path.name}")
+        print(f"  Converted: {relative_path} -> {output_path.name}")
         return True
         
     except Exception as e:
-        print(f"  Warning: Failed to convert {image_path.name}: {e}")
+        print(f"  Warning: Failed to convert {relative_path}: {e}")
         return False
 
 
@@ -59,9 +60,9 @@ def convert_images_in_directory(folder_path: str) -> None:
         print(f"Error: Not a directory: {folder_path}")
         sys.exit(1)
     
-    # Find all image files in the folder
+    # Find all image files in the folder and subfolders recursively
     image_files = [
-        f for f in folder.iterdir()
+        f for f in folder.rglob("*")
         if f.is_file() and f.suffix.lower() in IMAGE_EXTENSIONS
     ]
     
@@ -69,14 +70,14 @@ def convert_images_in_directory(folder_path: str) -> None:
         print(f"No images found in folder: {folder_path}")
         return
     
-    # Sort by filename
-    image_files.sort(key=lambda p: p.name)
+    # Sort by full path
+    image_files.sort(key=lambda p: str(p))
     
-    print(f"Found {len(image_files)} images in folder...")
+    print(f"Found {len(image_files)} images in folder (including subfolders)...")
     
     converted_count = 0
     for image_file in image_files:
-        if convert_image_to_jpg(image_file):
+        if convert_image_to_jpg(image_file, folder):
             converted_count += 1
     
     print(f"\nDone! Converted {converted_count} images.")
@@ -84,7 +85,7 @@ def convert_images_in_directory(folder_path: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert all images in a directory to JPG format."
+        description="Convert all images in a directory (including subfolders) to JPG format."
     )
     parser.add_argument(
         "folder",
